@@ -1,24 +1,41 @@
 package consumer
 
+import models.ThomsonLogLineModel
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.*
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler
 import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.KTable
 import org.apache.kafka.streams.kstream.Produced
+//import org.apache.logging.log4j.LogManager
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import serde.ThomsonLogLineSerde
 import java.util.*
 import java.util.concurrent.CountDownLatch
+
+
+class Main {
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            ConsumeLogEvents().run(args)
+        }
+    }
+}
 
 class ConsumeLogEvents {
 
     companion object {
-        private val LOG = LoggerFactory.getLogger(ConsumeLogEvents::class.java)
+//        slf4 logger
+        private val logger: Logger = LoggerFactory.getLogger(ConsumeLogEvents::class.java)
+//        private val logger = LogManager.getLogger(ConsumeLogEvents::class.java)
     }
 
-    val INPUT_TOPIC  = "thomson-ultamate-logger"
-    val OUTPUT_TOPIC  = "thomson-out"
+    val INPUT_TOPIC  = "thomson_ultamate_logger"
+    val OUTPUT_TOPIC  = "thomson_out"
 
     fun getStreamsConfig(): Properties {
         val props = Properties()
@@ -45,16 +62,26 @@ class ConsumeLogEvents {
 
         val props = getStreamsConfig()
 
+        logger.debug("FITTAN!!")
+
         val stringSerde = Serdes.String()
         val longSerde = Serdes.Long()
+
+        val thomsonLogLineSerde: Serde<ThomsonLogLineModel> =
+            ThomsonLogLineSerde()
 
         val produced: Produced<String, String> =
             Produced.with(stringSerde, stringSerde)
 
-        val consumed: Consumed<String, String> =
-            Consumed.with(stringSerde, stringSerde)
+        val consumed: Consumed<String, ThomsonLogLineModel> =
+            Consumed.with(stringSerde, thomsonLogLineSerde)
 
         val source = builder.stream(INPUT_TOPIC, consumed)
+
+        source
+            .mapValues(ThomsonLogLineModel::toString)
+            .peek({k ,v -> logger.debug("tuleeko mitään {}{}" , k, v)})
+            .to("thomson_test", produced)
 
 
     }
