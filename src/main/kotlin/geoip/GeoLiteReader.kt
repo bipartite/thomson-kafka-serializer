@@ -8,11 +8,12 @@ import java.io.File
 import java.net.InetAddress
 
 data class LocationFromIp(
-    val country: Country,
-    val subdivision: Subdivision,
-    val city: City,
-    val postal: Postal,
-    val location: Location
+    val country: Country? = null,
+    val subdivision: Subdivision? = null,
+    val city: City? = null,
+    val postal: Postal? = null,
+    val location: Location? = null,
+    val errorstr: String = ""
 )
 
 class GeoLiteReader {
@@ -34,20 +35,30 @@ class GeoLiteReader {
 
             // Replace "city" with the appropriate method for your database, e.g.,
             // "country".
-            val response: CityResponse = reader.city(ipAddress)
-            val country: Country = response.getCountry()
-            val subdivision: Subdivision = response.getMostSpecificSubdivision()
-            val city: City = response.getCity()
-            val postal: Postal = response.getPostal()
-            val location: Location = response.getLocation()
 
-            return LocationFromIp(
-                country = country,
-                subdivision = subdivision,
-                city = city,
-                postal = postal,
-                location = location
-            )
+            val locationFromIp : LocationFromIp = try {
+                val response: CityResponse = reader.city(ipAddress)
+                val country: Country = response.getCountry()
+                val subdivision: Subdivision = response.getMostSpecificSubdivision()
+                val city: City = response.getCity()
+                val postal: Postal = response.getPostal()
+                val location: Location = response.getLocation()
+                LocationFromIp(
+                    country = country,
+                    subdivision = subdivision,
+                    city = city,
+                    postal = postal,
+                    location = location
+                )
+            } catch (exception: Exception) {
+                LocationFromIp(
+                    errorstr = "AddressNotFoundException: The address $ipString is not in the database."
+                )
+            } finally {
+
+            }
+
+            return locationFromIp
 
         }
 

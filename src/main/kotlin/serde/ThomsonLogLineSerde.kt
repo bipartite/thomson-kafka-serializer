@@ -40,7 +40,7 @@ class ThomsonLogLineDeserializer : Deserializer<ThomsonLogLineModel> {
     override fun deserialize(topic: String?, data: ByteArray?): ThomsonLogLineModel? {
         if (data == null ) return null
         val datastr = String(data, CHARSET)
-        val type = object : TypeToken<RawEvent>() {}.type
+        val type = object : TypeToken<String>() {}.type
 
         return gson?.fromJson(datastr, type)
 

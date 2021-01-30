@@ -73,10 +73,11 @@ class ConsumeLogEvents {
         val produced: Produced<String, String> =
             Produced.with(stringSerde, stringSerde)
 
-        val consumed: Consumed<String, ThomsonLogLineModel> =
-            Consumed.with(stringSerde, thomsonLogLineSerde)
+        val consumed: Consumed<String, String> =
+            Consumed.with(stringSerde, stringSerde)
 
         val source = builder.stream(INPUT_TOPIC, consumed)
+            .mapValues({it -> ThomsonLogLineModel(it)})
 
         source
             .mapValues(ThomsonLogLineModel::toString)

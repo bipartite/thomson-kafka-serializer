@@ -5,6 +5,7 @@ import com.maxmind.db.CHMCache
 import com.maxmind.geoip2.DatabaseReader
 import com.maxmind.geoip2.model.CityResponse
 import com.maxmind.geoip2.record.*
+import models.ParseLogDataFromString
 import models.ThomsonLogLineModel
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
@@ -25,28 +26,6 @@ class AppTester {
         private val LOG = LoggerFactory.getLogger(AppTester::class.java)
     }
 
-    @Test
-    fun testRegex() {
-        val adapter = RawEventAdapter()
-        val gson = GsonBuilder()
-
-        val builder = gson.create()
-
-        val json : String = "{ \"payload\":\"Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request \"}"
-        val map: Map<String, String> = Gson().fromJson(json, object : TypeToken<Map<String?, String?>?>() {}.type)
-        val tempStr = map.get("payload")
-        val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
-        var strs : List<String> = tempStr.toString()
-            .split("\\s(SYSLOG\\[0\\]\\:)".toRegex())
-            .map { it.replace("  ", " ") }
-        println(strs[0])
-
-        val strToDate = LocalDate.parse(strs[0], dateFormat)
-//        strs = strs.map { it.replace("\\s+".toRegex(), "") }
-        println(strToDate.toString())
-
-        assertEquals(strToDate, strToDate)
-    }
 
 //    Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]
 //    Jan 12 17:34:12 2021 SYSLOG[0]: [Host 192.168.0.1] UDP 192.168.0.14,17500 --> 192.168.0.255,17500 ALLOW: Inbound access request
@@ -57,13 +36,39 @@ class AppTester {
 //    Jan 12 17:34:24 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 192.168.0.14,51892 --> 52.142.125.222,443 ALLOW: Outbound access request
 
     @Test
-    fun ModelFromString() {
+    fun testRegex1() {
         val string = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
 
         val t = ThomsonLogLineModel(string)
 
         assertEquals("TCP", t.protocol)
 
+        assertEquals("Firewall, interface, access, request", t.description)
+        println("source ip tulee ${t.sourceIp}")
+        assertEquals(45362, t.sourcePort)
+        println("dest ip tulee ${t.destintationIp}")
+        assertEquals(3389, t.destinationPort)
+        assertEquals("DENY", t.rule)
+        assertEquals("TCP", t.protocol)
+
+        println(t.srclocationFromIp?.city?.name)
+    }
+
+    @Test
+    fun testRegex2() {
+        val string = "Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]"
+        val string2 = "Jan 12 17:34:12 2021 SYSLOG[0]: [Host 192.168.0.1] ICMP (type 3) 24.193.175.197 --> 82.181.71.193 DENY: Firewall interface access request"
+        val string3 = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
+
+//        val t = ThomsonLogLineModel(string)
+
+        val t = ParseLogDataFromString.parseData(string)
+
+        val t2 = ParseLogDataFromString.parseData(string2)
+
+        val t3 = ParseLogDataFromString.parseData(string3)
+
+        assertEquals("TCP", t.protocol)
         assertEquals("Firewall, interface, access, request", t.description)
         println("source ip tulee ${t.sourceIp}")
         assertEquals(45362, t.sourcePort)
