@@ -7,6 +7,9 @@ import geoip.LocationFromIp
 import java.io.Serializable
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+import kotlin.time.measureTimedValue
 
 
 //{"schema":
@@ -50,39 +53,82 @@ class ParseLogDataFromString() : Serializable {
 
             val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
 
+            // Need to handle 3 formats
+//            "Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]"
+//            "Jan 12 17:34:12 2021 SYSLOG[0]: [Host 192.168.0.1] ICMP (type 3) 24.193.175.197 --> 82.181.71.193 DENY: Firewall interface access request"
+//            "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
+
+            //remove message repeated if exists
+            strippedPayload = strippedPayload.replace("(message repeated [0-9] times:)".toRegex(), "")
+            // and HOST 192.168.0.1
+            strippedPayload = strippedPayload.replace("(\\[Host 192.168.0.1\\])".toRegex(), "")
             // split at SYSLOG & create date
-            var strs = strippedPayload.split("\\s(SYSLOG\\[0\\]\\:)|(message repeated [0-9] times:)|(-->)".toRegex())
+            var strs = strippedPayload.split("\\s(SYSLOG\\[0\\]\\:)".toRegex())
                 .map { it.replace("  ", " ") }
 
-            println("splitattu stringi:")
+            println("date removed and stripped ")
             strs.mapIndexed { idx, v -> println("$idx : $v") }
-
             val strToDate = LocalDate.parse(strs[0], dateFormat)
             this.thomsonLogLineModel.date = strToDate
 
+            var (srcStr, dstStr) = strs[1]
+                .replace("(\\[|\\])".toRegex(), "").split("(-->)".toRegex())
+                .map { it.trim() }
 
-            if ( strippedPayload.contains("repeated")) {
-//    Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]
-            } else {
-//      0 1     2            3   4                   5   6                  7     8        9         10     11
-//        [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request
-                println(strs[1])
-                var datastr : List<String> = strs[1].split("\\s+".toRegex())
-                println("datastr $datastr")
-                this.thomsonLogLineModel.protocol = datastr[3].replace("\\s+".toRegex(), "")
-                val s = datastr[4].split(",")
-                this.thomsonLogLineModel.sourceIp = s[0]
-                this.thomsonLogLineModel.sourcePort = s[1].toLong()
-                val d = datastr[6].split(",")
-                this.thomsonLogLineModel.destintationIp = d[0]
-                this.thomsonLogLineModel.destinationPort = d[1].toLong()
-                this.thomsonLogLineModel.rule = datastr[7].replace(":", "")
-                this.thomsonLogLineModel.description = datastr.subList(8, datastr.size).joinToString()
-                this.thomsonLogLineModel.srclocationFromIp = GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.sourceIp)
-                this.thomsonLogLineModel.destlocationFromIp = GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.destintationIp)
+            println("sorsa : $srcStr")
+            println("desti : $dstStr")
 
+            //ip regex pattern
 
+            val zeroTo255 = "([01]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])"
+
+            val IP_REGEXP = "(?:[0-9]{1,3}\\.){3}[0-9]{1,3}"
+            val IP_PATTERN = Pattern.compile(IP_REGEXP)
+
+            val srcIpMatcher = IP_PATTERN.matcher(srcStr)
+            if(srcIpMatcher.find()) {
+                var srcIp = srcIpMatcher.group(0)
+                println("sorsa ip : $srcIp")
             }
+            val dstIpmatcher = IP_PATTERN.matcher(dstStr)
+            if(dstIpmatcher.find()) {
+                var dstStr = dstIpmatcher.group(0)
+                println("dst ip : $dstStr")
+            }
+            val protocolRegexp = "(UDP)|(TCP)|(ICMP \\(type [0-9]\\))"
+            val protocolPattern = Pattern.compile(protocolRegexp)
+            val protocolMatcher = protocolPattern.matcher(srcStr)
+            if(protocolMatcher.find()) {
+                val protocol = protocolMatcher.group(0)
+                println("protocol $protocol")
+            }
+
+
+//            println("repeated message removed $strippedPayload")
+
+
+//            if ( strippedPayload.contains("repeated")) {
+////    Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]
+//            } else {
+////      0 1     2            3   4                   5   6                  7     8        9         10     11
+////        [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request
+//                println(strs[1])
+//                var datastr : List<String> = strs[1].split("\\s+".toRegex())
+//                println("datastr $datastr")
+//                this.thomsonLogLineModel.protocol = datastr[3].replace("\\s+".toRegex(), "")
+//                val s = datastr[4].split(",")
+//                this.thomsonLogLineModel.sourceIp = s[0]
+//                this.thomsonLogLineModel.sourcePort = s[1].toLong()
+//                val d = datastr[6].split(",")
+//                this.thomsonLogLineModel.destintationIp = d[0]
+//                this.thomsonLogLineModel.destinationPort = d[1].toLong()
+//                this.thomsonLogLineModel.rule = datastr[7].replace(":", "")
+//                this.thomsonLogLineModel.description = datastr.subList(8, datastr.size).joinToString()
+//                this.thomsonLogLineModel.srclocationFromIp = GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.sourceIp)
+//                this.thomsonLogLineModel.destlocationFromIp = GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.destintationIp)
+//
+//
+//            }
 
             return this.thomsonLogLineModel
         }
