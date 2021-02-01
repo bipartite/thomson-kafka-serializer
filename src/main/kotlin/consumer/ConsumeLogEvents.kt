@@ -1,5 +1,7 @@
 package consumer
 
+import models.ParseLogDataFromString
+import models.ThomsonLogLineDataClass
 import models.ThomsonLogLineModel
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serde
@@ -77,10 +79,10 @@ class ConsumeLogEvents {
             Consumed.with(stringSerde, stringSerde)
 
         val source = builder.stream(INPUT_TOPIC, consumed)
-            .mapValues({it -> ThomsonLogLineModel(it)})
+            .mapValues({it -> ParseLogDataFromString.parseData(it)})
 
         source
-            .mapValues(ThomsonLogLineModel::toString)
+            .mapValues(ThomsonLogLineDataClass::toString)
             .peek({k ,v -> logger.debug("tuleeko mitään {}{}" , k, v)})
             .to("thomson_test", produced)
 

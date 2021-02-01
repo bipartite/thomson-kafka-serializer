@@ -79,56 +79,58 @@ class ParseLogDataFromString() : Serializable {
             println("desti : $dstStr")
 
             //ip regex pattern
-
-            val zeroTo255 = "([01]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])"
-
             val IP_REGEXP = "(?:[0-9]{1,3}\\.){3}[0-9]{1,3}"
             val IP_PATTERN = Pattern.compile(IP_REGEXP)
 
             val srcIpMatcher = IP_PATTERN.matcher(srcStr)
             if(srcIpMatcher.find()) {
-                var srcIp = srcIpMatcher.group(0)
-                println("sorsa ip : $srcIp")
+                this.thomsonLogLineModel.sourceIp = srcIpMatcher.group(0)
+                println("sorsa ip : ${this.thomsonLogLineModel.sourceIp}")
             }
             val dstIpmatcher = IP_PATTERN.matcher(dstStr)
             if(dstIpmatcher.find()) {
-                var dstStr = dstIpmatcher.group(0)
-                println("dst ip : $dstStr")
+                this.thomsonLogLineModel.destintationIp = dstIpmatcher.group(0)
+                println("dst ip : ${this.thomsonLogLineModel.destintationIp}")
             }
+
+            val portRegexp = "(?<=,)(\\d+)(?:\\s+|\$)"
+            val portPattern = Pattern.compile(portRegexp)
+            val srcPortMatcher = portPattern.matcher(srcStr)
+            val dstPortMatcher = portPattern.matcher(dstStr)
+
+            if(srcPortMatcher.find()) {
+                this.thomsonLogLineModel.sourcePort = srcPortMatcher.group(0).toLong()
+                println("src port ${this.thomsonLogLineModel.sourcePort}")
+            }
+
+            if(dstPortMatcher.find()) {
+                this.thomsonLogLineModel.destinationPort = dstPortMatcher.group(0).trim().toLong()
+                println("dst port ${this.thomsonLogLineModel.destinationPort}")
+            }
+
             val protocolRegexp = "(UDP)|(TCP)|(ICMP \\(type [0-9]\\))"
             val protocolPattern = Pattern.compile(protocolRegexp)
             val protocolMatcher = protocolPattern.matcher(srcStr)
             if(protocolMatcher.find()) {
-                val protocol = protocolMatcher.group(0)
-                println("protocol $protocol")
+                this.thomsonLogLineModel.protocol = protocolMatcher.group(0)
+                println("protocol ${this.thomsonLogLineModel.protocol}")
+            }
+            val ruleRegexp = "(DENY)|(ALLOW)"
+            val rulePattern = Pattern.compile(ruleRegexp)
+            val ruleMatcher = rulePattern.matcher(dstStr)
+            if(ruleMatcher.find()) {
+                this.thomsonLogLineModel.rule = ruleMatcher.group(0)
+                println("rule ${this.thomsonLogLineModel.rule}")
             }
 
+            val ruleInfoRegexp = "(?<=:\\s)(.*)(?:\\s+|\$)"
+            val ruleInfoPattern = Pattern.compile(ruleInfoRegexp)
+            val ruleInfoMatcher = ruleInfoPattern.matcher(dstStr)
+            if(ruleInfoMatcher.find()) {
+                this.thomsonLogLineModel.description = ruleInfoMatcher.group(0)
+                println("rule Info ${this.thomsonLogLineModel.description}")
+            }
 
-//            println("repeated message removed $strippedPayload")
-
-
-//            if ( strippedPayload.contains("repeated")) {
-////    Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]
-//            } else {
-////      0 1     2            3   4                   5   6                  7     8        9         10     11
-////        [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request
-//                println(strs[1])
-//                var datastr : List<String> = strs[1].split("\\s+".toRegex())
-//                println("datastr $datastr")
-//                this.thomsonLogLineModel.protocol = datastr[3].replace("\\s+".toRegex(), "")
-//                val s = datastr[4].split(",")
-//                this.thomsonLogLineModel.sourceIp = s[0]
-//                this.thomsonLogLineModel.sourcePort = s[1].toLong()
-//                val d = datastr[6].split(",")
-//                this.thomsonLogLineModel.destintationIp = d[0]
-//                this.thomsonLogLineModel.destinationPort = d[1].toLong()
-//                this.thomsonLogLineModel.rule = datastr[7].replace(":", "")
-//                this.thomsonLogLineModel.description = datastr.subList(8, datastr.size).joinToString()
-//                this.thomsonLogLineModel.srclocationFromIp = GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.sourceIp)
-//                this.thomsonLogLineModel.destlocationFromIp = GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.destintationIp)
-//
-//
-//            }
 
             return this.thomsonLogLineModel
         }
