@@ -2,7 +2,6 @@ package consumer
 
 import models.ParseLogDataFromString
 import models.ThomsonLogLineDataClass
-import models.ThomsonLogLineModel
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
@@ -69,7 +68,7 @@ class ConsumeLogEvents {
         val stringSerde = Serdes.String()
         val longSerde = Serdes.Long()
 
-        val thomsonLogLineSerde: Serde<ThomsonLogLineModel> =
+        val thomsonLogLineSerde: Serde<ThomsonLogLineDataClass> =
             ThomsonLogLineSerde()
 
         val produced: Produced<String, String> =

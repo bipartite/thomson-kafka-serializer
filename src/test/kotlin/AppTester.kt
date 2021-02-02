@@ -6,7 +6,6 @@ import com.maxmind.geoip2.DatabaseReader
 import com.maxmind.geoip2.model.CityResponse
 import com.maxmind.geoip2.record.*
 import models.ParseLogDataFromString
-import models.ThomsonLogLineModel
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
 import serde.RawEventAdapter
@@ -39,11 +38,11 @@ class AppTester {
     fun testRegex1() {
         val string = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
 
-        val t = ThomsonLogLineModel(string)
+        val t = ParseLogDataFromString.parseData(string)
 
         assertEquals("TCP", t.protocol)
 
-        assertEquals("Firewall, interface, access, request", t.description)
+        assertEquals("Firewall interface access request", t.description)
         println("source ip tulee ${t.sourceIp}")
         assertEquals(45362, t.sourcePort)
         println("dest ip tulee ${t.destintationIp}")
