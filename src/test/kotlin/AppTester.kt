@@ -14,9 +14,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.test.assertEquals
 import java.net.InetAddress
-
-
-
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
 
 
 class AppTester {
@@ -34,11 +33,19 @@ class AppTester {
 //    Jan 12 17:34:23 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 192.168.0.14,51891 --> 52.34.254.140,443 ALLOW: Outbound access request
 //    Jan 12 17:34:24 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 192.168.0.14,51892 --> 52.142.125.222,443 ALLOW: Outbound access request
 
+    @ExperimentalTime
     @Test
     fun testRegex1() {
+        val string3 = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
         val string = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
+        val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
 
-        val t = ParseLogDataFromString.parseData(string)
+        val (t, elapsed) = measureTimedValue {
+            Thread.sleep(100)
+            ParseLogDataFromString.parseData(string)
+        }
+        println("Elapse time $elapsed")
+        val localDate = LocalDate.parse("Jan 9 18:29:30 2021", dateFormat)
 
         assertEquals("TCP", t.protocol)
 
@@ -49,6 +56,7 @@ class AppTester {
         assertEquals(3389, t.destinationPort)
         assertEquals("DENY", t.rule)
         assertEquals("TCP", t.protocol)
+        assertEquals(localDate, t.date)
 
         println(t.srclocationFromIp?.city?.name)
     }
