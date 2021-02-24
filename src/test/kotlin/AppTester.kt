@@ -35,56 +35,82 @@ class AppTester {
 
     @ExperimentalTime
     @Test
-    fun testRegex1() {
-        val string3 = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
+    fun testRegexDoubleSpaceInDate() {
         val string = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
         val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
 
         val (t, elapsed) = measureTimedValue {
-            Thread.sleep(100)
             ParseLogDataFromString.parseData(string)
         }
-        println("Elapse time $elapsed")
+        println("Elapsed time $elapsed")
         val localDate = LocalDate.parse("Jan 9 18:29:30 2021", dateFormat)
 
-        assertEquals("TCP", t.protocol)
-
         assertEquals("Firewall interface access request", t.description)
-        println("source ip tulee ${t.sourceIp}")
         assertEquals(45362, t.sourcePort)
-        println("dest ip tulee ${t.destintationIp}")
         assertEquals(3389, t.destinationPort)
         assertEquals("DENY", t.rule)
         assertEquals("TCP", t.protocol)
         assertEquals(localDate, t.date)
 
-        println(t.srclocationFromIp?.city?.name)
+        println(t.toString())
     }
 
+    @ExperimentalTime
     @Test
-    fun testRegex2() {
-        val string = "Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]"
-        val string2 = "Jan 12 17:34:12 2021 SYSLOG[0]: [Host 192.168.0.1] ICMP (type 3) 24.193.175.197 --> 82.181.71.193 DENY: Firewall interface access request"
-        val string3 = "Jan  9 18:29:30 2021 SYSLOG[0]: [Host 192.168.0.1] TCP 161.97.78.236,45362 --> 82.181.71.193,3389 DENY: Firewall interface access request"
+    fun testICMP() {
+        val string = "Jan 31 12:00:21 2021 SYSLOG[0]: [Host 192.168.0.1] ICMP (type 3) 24.193.175.197 --> 82.181.71.193 DENY: Firewall interface access request"
+        val (t, el)  = measureTimedValue {
+            ParseLogDataFromString.parseData(string)
+        }
+        val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
+        val localDate = LocalDate.parse("Jan 31 12:00:21 2021", dateFormat)
 
-//        val t = ThomsonLogLineModel(string)
 
-        val t = ParseLogDataFromString.parseData(string)
+        println("Elapsed time string2 $el")
+        println(t)
 
-        val t2 = ParseLogDataFromString.parseData(string2)
-
-        val t3 = ParseLogDataFromString.parseData(string3)
-
-        assertEquals("TCP", t.protocol)
         assertEquals("Firewall interface access request", t.description)
-        println("source ip tulee ${t.sourceIp}")
-        assertEquals(45362, t.sourcePort)
-        println("dest ip tulee ${t.destintationIp}")
-        assertEquals(3389, t.destinationPort)
+        assertEquals(null, t.sourcePort)
+        assertEquals(null, t.destinationPort)
+        assertEquals("24.193.175.197", t.sourceIp)
+        assertEquals("82.181.71.193", t.destintationIp)
         assertEquals("DENY", t.rule)
-        assertEquals("TCP", t.protocol)
+        assertEquals("ICMP (type 3)", t.protocol)
+        assertEquals(localDate, t.date)
 
-        println(t.srclocationFromIp?.city?.name)
+    }
+    @ExperimentalTime
+    @Test
+    fun testShouldSkipString() {
+        val string = "Jan 31 12:00:21 2021 SYSLOG[0]: [Host 192.168.0.1]  Time Of Day established "
+        val (t, el) = measureTimedValue {
+            ParseLogDataFromString.parseData(string)
+        }
+        println("Elapsed time string3 $el")
+        println(t)
+    }
+
+    @ExperimentalTime
+    @Test
+    fun testRegexMessageRepeats() {
+        val string = "Jan 12 17:34:12 2019 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]"
+        val (t, elapsed) =
+            measureTimedValue {
+                ParseLogDataFromString.parseData(string)
+            }
+        println("Elapsed time string1 $elapsed")
+
+        val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
+        val localDate = LocalDate.parse("Jan 12 17:34:12 2019", dateFormat)
+        println(t)
+
+        assertEquals("UDP", t.protocol)
+        assertEquals("Inbound access request ]", t.description)
+        assertEquals(57621, t.sourcePort)
+        assertEquals(57621, t.destinationPort)
+        assertEquals("ALLOW", t.rule)
+        assertEquals(localDate, t.date)
+
     }
 
     @Test
