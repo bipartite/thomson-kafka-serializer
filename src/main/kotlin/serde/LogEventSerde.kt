@@ -40,7 +40,7 @@ class RawEventDeserializer : Deserializer<RawEvent> {
         val datastr = String(data, CHARSET)
         val type = object : TypeToken<RawEvent>() {}.type
 
-        return gson?.fromJson(datastr, type)
+        return gson.fromJson(datastr, type)
 
     }
 
