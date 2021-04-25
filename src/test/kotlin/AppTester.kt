@@ -1,29 +1,19 @@
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
 import com.maxmind.db.CHMCache
 import com.maxmind.geoip2.DatabaseReader
 import com.maxmind.geoip2.model.CityResponse
 import com.maxmind.geoip2.record.*
 import models.ParseLogDataFromString
 import org.junit.jupiter.api.Test
-import org.slf4j.LoggerFactory
-import serde.RawEventAdapter
 import java.io.File
+import java.net.InetAddress
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.test.assertEquals
-import java.net.InetAddress
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
 
 class AppTester {
-
-    companion object {
-        private val LOG = LoggerFactory.getLogger(AppTester::class.java)
-    }
-
 
 //    Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]
 //    Jan 12 17:34:12 2021 SYSLOG[0]: [Host 192.168.0.1] UDP 192.168.0.14,17500 --> 192.168.0.255,17500 ALLOW: Inbound access request

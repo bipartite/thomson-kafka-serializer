@@ -3,17 +3,15 @@ package consumer
 import models.ParseLogDataFromString
 import models.ThomsonLogLineDataClass
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.*
+import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.StreamsBuilder
+import org.apache.kafka.streams.StreamsConfig
+import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler
 import org.apache.kafka.streams.kstream.Consumed
-import org.apache.kafka.streams.kstream.KTable
 import org.apache.kafka.streams.kstream.Produced
-//import org.apache.logging.log4j.LogManager
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-import serde.ThomsonLogLineSerde
+import org.apache.logging.log4j.LogManager
 import java.util.*
 import java.util.concurrent.CountDownLatch
 
@@ -30,9 +28,7 @@ class Main {
 class ConsumeLogEvents {
 
     companion object {
-//        slf4 logger
-        private val logger: Logger = LoggerFactory.getLogger(ConsumeLogEvents::class.java)
-//        private val logger = LogManager.getLogger(ConsumeLogEvents::class.java)
+        private val logger = LogManager.getLogger(ConsumeLogEvents::class.java)
     }
 
     val INPUT_TOPIC  = "thomson_ultamate_logger"
@@ -43,33 +39,27 @@ class ConsumeLogEvents {
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-elisa")
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
         props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0)
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
 
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String()::javaClass.get())
-
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String()::javaClass.get())
-        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String()::javaClass.get())
 
         props.put("default.deserialization.exception.handler", LogAndContinueExceptionHandler::class.java)
         props.put(
             StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
             LogAndContinueExceptionHandler::class.java
-        );
+        )
 
         return props
     }
 
     fun consumeAlerts(builder: StreamsBuilder) {
 
-        val props = getStreamsConfig()
+//        val props = getStreamsConfig()
 
-        logger.debug("FITTAN!!")
+        logger.debug("debug logitus toimii!!")
 
         val stringSerde = Serdes.String()
-        val longSerde = Serdes.Long()
-
-        val thomsonLogLineSerde: Serde<ThomsonLogLineDataClass> =
-            ThomsonLogLineSerde()
 
         val produced: Produced<String, String> =
             Produced.with(stringSerde, stringSerde)
@@ -82,21 +72,23 @@ class ConsumeLogEvents {
 
         source
             .mapValues(ThomsonLogLineDataClass::toString)
-            .peek({k ,v -> logger.debug("tuleeko mitään {}{}" , k, v)})
-            .to("thomson_test", produced)
+            .peek({k ,v ->
+//                logger.debug("tuleeko mitään {}{}" , k, v)
+            })
+            .to(OUTPUT_TOPIC, produced)
 
 
     }
 
     fun run(args: Array<String>) {
         val props = getStreamsConfig()
-        val builder: StreamsBuilder = StreamsBuilder()
+        val builder = StreamsBuilder()
         consumeAlerts(builder)
 
         val topo: Topology = builder.build()
 
-        val streams: KafkaStreams = KafkaStreams(topo, props)
-        val latch: CountDownLatch = CountDownLatch(1)
+        val streams = KafkaStreams(topo, props)
+        val latch = CountDownLatch(1)
 
         Runtime.getRuntime().addShutdownHook(object : Thread("streams-wordcount-shutdown-hook") {
             override fun run() {

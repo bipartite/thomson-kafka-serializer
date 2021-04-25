@@ -4,7 +4,6 @@ package serde
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import models.RawEvent
 import models.ThomsonLogLineDataClass
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serde
@@ -20,8 +19,8 @@ class ThomsonLogLineSerde : Serde<ThomsonLogLineDataClass> {
         deserializer.configure(configs, isKey)
     }
     override fun close() {
-        serializer.close();
-        deserializer.close();
+        serializer.close()
+        deserializer.close()
     }
 
     override fun serializer(): Serializer<ThomsonLogLineDataClass> = ThomsonLogLineSerializer()
@@ -42,7 +41,7 @@ class ThomsonLogLineDeserializer : Deserializer<ThomsonLogLineDataClass> {
         val datastr = String(data, CHARSET)
         val type = object : TypeToken<String>() {}.type
 
-        return gson?.fromJson(datastr, type)
+        return gson.fromJson(datastr, type)
 
     }
 

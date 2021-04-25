@@ -1,18 +1,14 @@
 package models
 
 import com.google.gson.annotations.SerializedName
-import com.maxmind.geoip2.record.*
-import consumer.ConsumeLogEvents
 import geoip.GeoLiteReader
 import geoip.LocationFromIp
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.apache.logging.log4j.LogManager
 import java.io.Serializable
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.regex.Matcher
+import java.util.*
 import java.util.regex.Pattern
-import kotlin.time.measureTimedValue
 
 
 //{"schema":
@@ -48,11 +44,11 @@ data class ThomsonLogLineDataClass(
 
 class ParseLogDataFromString() : Serializable {
     companion object {
-        private var thomsonLogLineModel = ThomsonLogLineDataClass()
-        private val logger: Logger = LoggerFactory.getLogger(ParseLogDataFromString::class.java)
+        private val logger = LogManager.getLogger(ThomsonLogLineDataClass::class.java)
 
         fun parseData(logLine: String) : ThomsonLogLineDataClass {
 
+            var thomsonLogLineModel = ThomsonLogLineDataClass()
             try {
                 // Need to handle 4 cases
 //            "Jan 12 17:34:12 2021 SYSLOG[0]: message repeated 2 times: [ [Host 192.168.0.1] UDP 192.168.0.14,57621 --> 192.168.0.255,57621 ALLOW: Inbound access request ]"
@@ -67,32 +63,38 @@ class ParseLogDataFromString() : Serializable {
                 // When "-->" not found return
                 if(!separatorMatcher.find()) {
                     logger.debug("--> not found, discarding string $logLine")
-                    return this.thomsonLogLineModel
+                    return thomsonLogLineModel
                 }
 
-                var strippedPayload = logLine.replace("\"", "").trim()
-//            println("original payload $strippedPayload")
+                //Thomson produces " at the beginning and end the log string
+                var strippedPayload = if (logLine[0] == '"') logLine.substring(1, logLine.length-1) else logLine
 
-                val dateFormat = DateTimeFormatter.ofPattern("MMM d HH:mm:ss yyyy")
+//                var strippedPayload = logLine.replace("\"", "").trim()
+//                logger.debug("original payload $strippedPayload")
 
-                //remove message repeated if exists
-//                strippedPayload = strippedPayload.replace("(message repeated [0-9] times:)".toRegex(), "")
-                // and HOST 192.168.0.1
-                var hostRemovedLogLine = strippedPayload.replace("(\\[Host 192.168.0.1\\])".toRegex(), "")
-                // split at SYSLOG & create date
-                var (dateStr, payload) = hostRemovedLogLine.split("\\s(SYSLOG\\[0\\]\\:)".toRegex())
+                //strip date part from the rest of the string
+                var dateStr = strippedPayload.substring(0, 20)
+                var payload = strippedPayload.substring(51)
+                logger.debug("payload [0] ${payload[0]}")
 
-//            println("date removed and stripped ")
-//            strs.mapIndexed { idx, v -> println("$idx : $v") }
-                val strToDate = LocalDate.parse(dateStr.replace("  ", " "), dateFormat)
-                this.thomsonLogLineModel.date = strToDate
+                // Parse date
+                // Two different date formats
+                val dateFormats = Arrays.asList("MMM d HH:mm:ss yyyy", "MMM  d HH:mm:ss yyyy")
 
+                dateFormats.map {
+                    try {
+                        val dateFromStr = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern(it))
+                        thomsonLogLineModel.date = dateFromStr
+                    } catch (e: Exception) {}
+                }
+
+                //Split log string to source and destination part
                 var (srcStr, dstStr) = payload
                     .split("(-->)".toRegex())
                     .map { it.trim() }
 
-//                println("sorsa : $srcStr")
-//                println("desti : $dstStr")
+                logger.debug("sorsa : $srcStr")
+                logger.debug("desti : $dstStr")
 
                 //ip regex pattern
                 val IP_REGEXP = "(?:[0-9]{1,3}\\.){3}[0-9]{1,3}"
@@ -100,13 +102,13 @@ class ParseLogDataFromString() : Serializable {
 
                 val srcIpMatcher = IP_PATTERN.matcher(srcStr)
                 if(srcIpMatcher.find()) {
-                    this.thomsonLogLineModel.sourceIp = srcIpMatcher.group(0)
-//                    println("sorsa ip : ${this.thomsonLogLineModel.sourceIp}")
+                    thomsonLogLineModel.sourceIp = srcIpMatcher.group(0)
+                    logger.debug("sorsa ip : ${thomsonLogLineModel.sourceIp}")
                 }
                 val dstIpmatcher = IP_PATTERN.matcher(dstStr)
                 if(dstIpmatcher.find()) {
-                    this.thomsonLogLineModel.destintationIp = dstIpmatcher.group(0)
-//                    println("dst ip : ${this.thomsonLogLineModel.destintationIp}")
+                    thomsonLogLineModel.destintationIp = dstIpmatcher.group(0)
+                    logger.debug("dst ip : ${thomsonLogLineModel.destintationIp}")
                 }
 
                 val portRegexp = "(?<=,)(\\d+)(?:\\s+|\$)"
@@ -115,48 +117,48 @@ class ParseLogDataFromString() : Serializable {
                 val dstPortMatcher = portPattern.matcher(dstStr)
 
                 if(srcPortMatcher.find()) {
-                    this.thomsonLogLineModel.sourcePort = srcPortMatcher.group(0).toLong()
-//                    println("src port ${this.thomsonLogLineModel.sourcePort}")
+                    thomsonLogLineModel.sourcePort = srcPortMatcher.group(0).toLong()
+                    logger.debug("src port ${thomsonLogLineModel.sourcePort}")
                 }
 
                 if(dstPortMatcher.find()) {
-                    this.thomsonLogLineModel.destinationPort = dstPortMatcher.group(0).trim().toLong()
-//                    println("dst port ${this.thomsonLogLineModel.destinationPort}")
+                    thomsonLogLineModel.destinationPort = dstPortMatcher.group(0).trim().toLong()
+                    logger.debug("dst port ${thomsonLogLineModel.destinationPort}")
                 }
 
                 val protocolRegexp = "(UDP)|(TCP)|(ICMP \\(type [0-9]\\))"
                 val protocolPattern = Pattern.compile(protocolRegexp)
                 val protocolMatcher = protocolPattern.matcher(srcStr)
                 if(protocolMatcher.find()) {
-                    this.thomsonLogLineModel.protocol = protocolMatcher.group(0)
-//                    println("protocol ${this.thomsonLogLineModel.protocol}")
+                    thomsonLogLineModel.protocol = protocolMatcher.group(0)
+                    logger.debug("protocol ${thomsonLogLineModel.protocol}")
                 }
                 val ruleRegexp = "(DENY)|(ALLOW)"
                 val rulePattern = Pattern.compile(ruleRegexp)
                 val ruleMatcher = rulePattern.matcher(dstStr)
                 if(ruleMatcher.find()) {
-                    this.thomsonLogLineModel.rule = ruleMatcher.group(0)
-//                    println("rule ${this.thomsonLogLineModel.rule}")
+                    thomsonLogLineModel.rule = ruleMatcher.group(0)
+                    logger.debug("rule ${thomsonLogLineModel.rule}")
                 }
 
                 val ruleInfoRegexp = "(?<=:\\s)(.*)(?:\\s+|\$)"
                 val ruleInfoPattern = Pattern.compile(ruleInfoRegexp)
                 val ruleInfoMatcher = ruleInfoPattern.matcher(dstStr)
                 if(ruleInfoMatcher.find()) {
-                    this.thomsonLogLineModel.description = ruleInfoMatcher.group(0)
-//                    println("rule Info ${this.thomsonLogLineModel.description}")
+                    thomsonLogLineModel.description = ruleInfoMatcher.group(0)
+                    logger.debug("rule Info ${thomsonLogLineModel.description}")
                 }
-                this.thomsonLogLineModel.srclocationFromIp =
-                    GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.sourceIp)
-                this.thomsonLogLineModel.destlocationFromIp =
-                    GeoLiteReader.getGeoIpLocation(this.thomsonLogLineModel.destintationIp)
+                thomsonLogLineModel.srclocationFromIp =
+                    GeoLiteReader.getGeoIpLocation(thomsonLogLineModel.sourceIp)
+                thomsonLogLineModel.destlocationFromIp =
+                    GeoLiteReader.getGeoIpLocation(thomsonLogLineModel.destintationIp)
 
-                return this.thomsonLogLineModel
+                return thomsonLogLineModel
             } catch (e: Exception) {
-                println("FAILED WITH STRING $logLine")
-                println(e.toString())
+                logger.debug("FAILED WITH STRING $logLine")
+                logger.debug(e.toString())
             } finally {
-                return this.thomsonLogLineModel
+                return thomsonLogLineModel
             }
         }
     }

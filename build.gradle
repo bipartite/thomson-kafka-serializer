@@ -8,22 +8,17 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    //-----Yhdessä toimii
+    //-----slf4j
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+//    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-jdk14
-    compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.25'
+//    compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.25'
     //-----
 
-    // org.apache logggin
-//    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.14.0'
-//    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.14.0'
+    // org.apache loggging
+    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.14.0'
+    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.14.0'
 
-//    compile group: 'log4j', name: 'log4j', version: '1.2.17'
-//    // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
-////    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.12.1'
-//// https://mvnrepository.com/artifact/org.slf4j/slf4j-log4j12
-//    compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
 
     compile group: 'org.apache.kafka', name: 'kafka_2.13', version: '2.6.0'
     // https://mvnrepository.com/artifact/org.apache.kafka/kafka-streams
